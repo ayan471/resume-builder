@@ -1,18 +1,30 @@
 "use client";
 
+import { cn, mapToResumeValues } from "@/lib/utils";
+import { ResumeValues } from "@/lib/validation";
 import { useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { steps } from "../steps";
 import Breadcrumbs from "./Breadcrumbs";
 import Footer from "./Footer";
-import { useState } from "react";
-import { ResumeValues } from "@/lib/validation";
 import ResumePreviewSection from "./ResumePreviewSection";
-import { cn } from "@/lib/utils";
 
-export default function ResumeEditor() {
+import useUnloadWarning from "@/hooks/useUnloadWarning";
+import useAutoSaveResume from "./useAutoSaveResume";
+import { ResumeServerData } from "@/lib/types";
+
+interface ResumeEditorProps {
+  resumeToEdit: ResumeServerData | null;
+}
+
+export default function ResumeEditor({ resumeToEdit }: ResumeEditorProps) {
   const searchParams = useSearchParams();
-  const [resumeData, setResumeData] = useState<ResumeValues>({});
+  const [resumeData, setResumeData] = useState<ResumeValues>(
+    resumeToEdit ? mapToResumeValues(resumeToEdit) : {},
+  );
   const [showSmResumePreview, setShowSmResmePreview] = useState(false);
+  const { isSaving, hasUnsavedChanges } = useAutoSaveResume(resumeData);
+  useUnloadWarning(hasUnsavedChanges);
   const currentStep = searchParams.get("step") || steps[0].key;
 
   function setStep(key: string) {
@@ -63,6 +75,7 @@ export default function ResumeEditor() {
         setCurrentStep={setStep}
         showSmResumePreview={showSmResumePreview}
         setShowSmResumePreview={setShowSmResmePreview}
+        isSaving={isSaving}
       />
     </div>
   );
