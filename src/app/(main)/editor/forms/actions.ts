@@ -1,6 +1,8 @@
 "use server";
 
 import openai from "@/lib/openai";
+import { canUseAITools } from "@/lib/permissions";
+import { getUserSubscriptionLevel } from "@/lib/subscription";
 import {
   GenerateSummaryInput,
   generateSummarySchema,
@@ -8,13 +10,26 @@ import {
   generateWorkExperienceSchema,
   WorkExperience,
 } from "@/lib/validation";
+import { auth } from "@clerk/nextjs/server";
 
 export async function generateSummary(input: GenerateSummaryInput) {
+  const { userId } = await auth();
+
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+
+  const subscriptionLevel = await getUserSubscriptionLevel(userId);
+
+  if (!canUseAITools(subscriptionLevel)) {
+    throw new Error("Upgrade your subscription to use this feature");
+  }
+
   const { jobTitle, workExperiences, educations, skills } =
     generateSummarySchema.parse(input);
 
   const systemMessage = `
-        You are a job resume generator AI. Your task is to write a professional introduction summary for a resume given the user's provided data.
+    You are a job resume generator AI. Your task is to write a professional introduction summary for a resume given the user's provided data.
     Only return the summary and do not include any other information in the response. Keep it concise and professional.
     `;
 
@@ -77,6 +92,18 @@ export async function generateSummary(input: GenerateSummaryInput) {
 export async function generateWorkExperience(
   input: GenerateWorkExperienceInput,
 ) {
+  const { userId } = await auth();
+
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+
+  const subscriptionLevel = await getUserSubscriptionLevel(userId);
+
+  if (!canUseAITools(subscriptionLevel)) {
+    throw new Error("Upgrade your subscription to use this feature");
+  }
+
   const { description } = generateWorkExperienceSchema.parse(input);
 
   const systemMessage = `

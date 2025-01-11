@@ -1,15 +1,5 @@
+import LoadingButton from "@/components/LoadingButton";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import {
-  GenerateWorkExperienceInput,
-  generateWorkExperienceSchema,
-  WorkExperience,
-} from "@/lib/validation";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { WandSparklesIcon } from "lucide-react";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { generateWorkExperience } from "./actions";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +16,21 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import LoadingButton from "@/components/LoadingButton";
+import { useToast } from "@/hooks/use-toast";
+
+import { canUseAITools } from "@/lib/permissions";
+import {
+  GenerateWorkExperienceInput,
+  generateWorkExperienceSchema,
+  WorkExperience,
+} from "@/lib/validation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { WandSparklesIcon } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { useSubscriptionLevel } from "../../SubscriptionLevelProvider";
+import { generateWorkExperience } from "./actions";
+import usePremiumModal from "@/hooks/usePremiumModel";
 
 interface GenerateWorkExperienceButtonProps {
   onWorkExperienceGenerated: (workExperience: WorkExperience) => void;
@@ -35,14 +39,24 @@ interface GenerateWorkExperienceButtonProps {
 export default function GenerateWorkExperienceButton({
   onWorkExperienceGenerated,
 }: GenerateWorkExperienceButtonProps) {
+  const subscriptionLevel = useSubscriptionLevel();
+
+  const premiumModal = usePremiumModal();
+
   const [showInputDialog, setShowInputDialog] = useState(false);
 
   return (
     <>
       <Button
-        variant={"outline"}
+        variant="outline"
         type="button"
-        onClick={() => setShowInputDialog(true)}
+        onClick={() => {
+          if (!canUseAITools(subscriptionLevel)) {
+            premiumModal.setOpen(true);
+            return;
+          }
+          setShowInputDialog(true);
+        }}
       >
         <WandSparklesIcon className="size-4" />
         Smart fill (AI)
@@ -71,12 +85,14 @@ function InputDialog({
   onWorkExperienceGenerated,
 }: InputDialogProps) {
   const { toast } = useToast();
+
   const form = useForm<GenerateWorkExperienceInput>({
     resolver: zodResolver(generateWorkExperienceSchema),
     defaultValues: {
       description: "",
     },
   });
+
   async function onSubmit(input: GenerateWorkExperienceInput) {
     try {
       const response = await generateWorkExperience(input);
@@ -89,6 +105,7 @@ function InputDialog({
       });
     }
   }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
